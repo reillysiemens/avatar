@@ -1,8 +1,20 @@
-use axum::{extract::ConnectInfo, routing::get, Router};
-use std::net::SocketAddr;
+use std::{io::Cursor, net::SocketAddr};
 
-async fn avatar(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    format!("Hello, {}", addr.ip())
+use axum::{extract::ConnectInfo, http::header, response::IntoResponse, routing::get, Router};
+use image::{ImageBuffer, ImageOutputFormat, Rgb};
+
+const WIDTH: u32 = 256;
+const HEIGHT: u32 = WIDTH;
+const BACKGROUND_COLOR: Rgb<u8> = Rgb([177, 98, 134]);
+
+async fn avatar(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    let _text = format!("Hello, {}!", addr.ip());
+    let img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
+
+    let mut cursor = Cursor::new(vec![]);
+    img.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+
+    ([(header::CONTENT_TYPE, "image/png")], cursor.into_inner())
 }
 
 #[tokio::main]
