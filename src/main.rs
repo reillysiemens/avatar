@@ -19,11 +19,13 @@ const FONT_DATA: &[u8] = include_bytes!(concat!(
 ));
 
 async fn avatar(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    let ip = addr.ip();
     let font = Font::try_from_bytes(FONT_DATA).unwrap();
-    let text = format!("Hello,\n{}!", addr.ip());
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
-    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, &font, &text);
+    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, &font, "Hello,");
+    let y = Y + SCALE.y as i32;
+    draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, &font, &format!("{ip}!"));
 
     let mut cursor = Cursor::new(vec![]);
     img.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
