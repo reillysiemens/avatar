@@ -1,8 +1,15 @@
 use std::{io::Cursor, net::SocketAddr};
 
-use axum::{extract::ConnectInfo, http::header, response::IntoResponse, routing::get, Router};
+use axum::{
+    extract::ConnectInfo,
+    http::{header, StatusCode},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
 use image::{ImageBuffer, ImageOutputFormat, Rgb};
 use imageproc::drawing::draw_text_mut;
+use lazy_static::lazy_static;
 use rusttype::{Font, Scale};
 
 const WIDTH: u32 = 256;
@@ -18,19 +25,35 @@ const FONT_DATA: &[u8] = include_bytes!(concat!(
     "/fonts/UbuntuMono-R.ttf"
 ));
 
-async fn avatar(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+lazy_static! {
+    static ref FONT: Font<'static> =
+        Font::try_from_bytes(FONT_DATA).expect("Built-in font data was invalid");
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to generate image: {0}")]
+struct ImageError(#[from] image::ImageError);
+
+impl IntoResponse for ImageError {
+    fn into_response(self) -> axum::response::Response {
+        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+    }
+}
+
+async fn avatar(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> Result<impl IntoResponse, ImageError> {
     let ip = addr.ip();
-    let font = Font::try_from_bytes(FONT_DATA).unwrap();
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
-    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, &font, "Hello,");
+    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, &FONT, "Hello,");
     let y = Y + SCALE.y as i32;
-    draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, &font, &format!("{ip}!"));
+    draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, &FONT, &format!("{ip}!"));
 
     let mut cursor = Cursor::new(vec![]);
     img.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
 
-    ([(header::CONTENT_TYPE, "image/png")], cursor.into_inner())
+    Ok(([(header::CONTENT_TYPE, "image/png")], cursor.into_inner()))
 }
 
 #[tokio::main]
