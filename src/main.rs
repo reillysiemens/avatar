@@ -57,10 +57,11 @@ async fn avatar(
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let app = Router::new().route("/avatar.png", get(avatar));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     let make_service = app.into_make_service_with_connect_info::<SocketAddr>();
-    axum::serve(listener, make_service).await.unwrap();
+    axum::serve(listener, make_service).await?;
+    Ok(())
 }
