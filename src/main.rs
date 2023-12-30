@@ -42,6 +42,7 @@ impl IntoResponse for AvatarError {
 async fn avatar(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> Result<impl IntoResponse, AvatarError> {
+    // Wow, IPv6 causes a lot of headache.
     let ip = addr.ip().to_canonical();
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
