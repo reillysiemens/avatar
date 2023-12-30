@@ -31,9 +31,9 @@ fn font() -> &'static Font<'static> {
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to generate image: {0}")]
-struct ImageError(#[from] image::ImageError);
+struct AvatarError(#[from] image::ImageError);
 
-impl IntoResponse for ImageError {
+impl IntoResponse for AvatarError {
     fn into_response(self) -> axum::response::Response {
         (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
     }
@@ -41,7 +41,7 @@ impl IntoResponse for ImageError {
 
 async fn avatar(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> Result<impl IntoResponse, ImageError> {
+) -> Result<impl IntoResponse, AvatarError> {
     let ip = addr.ip();
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
@@ -50,7 +50,7 @@ async fn avatar(
     draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, font(), &format!("{ip}!"));
 
     let mut cursor = Cursor::new(vec![]);
-    img.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+    img.write_to(&mut cursor, ImageOutputFormat::Png)?;
 
     Ok(([(header::CONTENT_TYPE, "image/png")], cursor.into_inner()))
 }
