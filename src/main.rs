@@ -42,7 +42,7 @@ impl IntoResponse for AvatarError {
 async fn avatar(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> Result<impl IntoResponse, AvatarError> {
-    let ip = addr.ip();
+    let ip = addr.ip().to_canonical();
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
     draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, font(), "Hello,");
@@ -59,7 +59,7 @@ async fn avatar(
 async fn main() -> anyhow::Result<()> {
     let app = Router::new().route("/avatar.png", get(avatar));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    let listener = tokio::net::TcpListener::bind("[::]:3000").await?;
     let make_service = app.into_make_service_with_connect_info::<SocketAddr>();
     axum::serve(listener, make_service).await?;
     Ok(())
