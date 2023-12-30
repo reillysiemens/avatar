@@ -1,4 +1,4 @@
-use std::{io::Cursor, net::SocketAddr};
+use std::{io::Cursor, net::SocketAddr, sync::OnceLock};
 
 use axum::{
     extract::ConnectInfo,
@@ -9,7 +9,6 @@ use axum::{
 };
 use image::{ImageBuffer, ImageOutputFormat, Rgb};
 use imageproc::drawing::draw_text_mut;
-use lazy_static::lazy_static;
 use rusttype::{Font, Scale};
 
 const WIDTH: u32 = 256;
@@ -25,9 +24,9 @@ const FONT_DATA: &[u8] = include_bytes!(concat!(
     "/fonts/UbuntuMono-R.ttf"
 ));
 
-lazy_static! {
-    static ref FONT: Font<'static> =
-        Font::try_from_bytes(FONT_DATA).expect("Built-in font data was invalid");
+fn font() -> &'static Font<'static> {
+    static FONT: OnceLock<Font> = OnceLock::new();
+    FONT.get_or_init(|| Font::try_from_bytes(FONT_DATA).expect("Built-in font data was invalid"))
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -46,9 +45,9 @@ async fn avatar(
     let ip = addr.ip();
     let mut img = ImageBuffer::from_pixel(WIDTH, HEIGHT, BACKGROUND_COLOR);
 
-    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, &FONT, "Hello,");
+    draw_text_mut(&mut img, TEXT_COLOR, X, Y, SCALE, font(), "Hello,");
     let y = Y + SCALE.y as i32;
-    draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, &FONT, &format!("{ip}!"));
+    draw_text_mut(&mut img, TEXT_COLOR, X, y, SCALE, font(), &format!("{ip}!"));
 
     let mut cursor = Cursor::new(vec![]);
     img.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
